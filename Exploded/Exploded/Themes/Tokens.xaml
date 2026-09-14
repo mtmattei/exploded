@@ -1,0 +1,137 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        EXPLODED tokens. Plain root-level dictionary, StaticResource lookups.
+        Light-only by design: the app is a printed service-manual plate, and a
+        dark variant would be a second, unrelated identity.
+
+        The palette is drawn from what the parts are made of rather than from a
+        mood: studio-sweep grey, FR4 board green, steel, anodized aluminium,
+        graphite ink. Safety orange appears only on the callout system, which is
+        the drafting convention this whole archetype borrows from.
+    -->
+
+    <!-- grounds -->
+    <Color x:Key="Exploded.Color.Sweep">#D9D7D2</Color>
+    <Color x:Key="Exploded.Color.Paper">#F0EEE9</Color>
+
+    <!-- ink -->
+    <Color x:Key="Exploded.Color.Ink">#1B1E1C</Color>
+    <Color x:Key="Exploded.Color.InkDim">#6C6F6B</Color>
+    <Color x:Key="Exploded.Color.InkFaint">#A3A6A1</Color>
+
+    <!-- the one primary, and the one support -->
+    <Color x:Key="Exploded.Color.Callout">#D2481E</Color>
+    <Color x:Key="Exploded.Color.Board">#2E6B4F</Color>
+
+    <!-- part materials -->
+    <Color x:Key="Exploded.Color.Keycap">#CFCBC3</Color>
+    <Color x:Key="Exploded.Color.Housing">#3A3E42</Color>
+    <Color x:Key="Exploded.Color.Steel">#B4B8BC</Color>
+    <Color x:Key="Exploded.Color.Aluminium">#C3BFB8</Color>
+
+    <SolidColorBrush x:Key="Sweep" Color="{StaticResource Exploded.Color.Sweep}" />
+    <SolidColorBrush x:Key="Paper" Color="{StaticResource Exploded.Color.Paper}" />
+    <SolidColorBrush x:Key="Ink" Color="{StaticResource Exploded.Color.Ink}" />
+    <SolidColorBrush x:Key="InkDim" Color="{StaticResource Exploded.Color.InkDim}" />
+    <SolidColorBrush x:Key="InkFaint" Color="{StaticResource Exploded.Color.InkFaint}" />
+    <SolidColorBrush x:Key="Callout" Color="{StaticResource Exploded.Color.Callout}" />
+    <SolidColorBrush x:Key="Board" Color="{StaticResource Exploded.Color.Board}" />
+    <SolidColorBrush x:Key="Keycap" Color="{StaticResource Exploded.Color.Keycap}" />
+    <SolidColorBrush x:Key="Housing" Color="{StaticResource Exploded.Color.Housing}" />
+    <SolidColorBrush x:Key="Steel" Color="{StaticResource Exploded.Color.Steel}" />
+    <SolidColorBrush x:Key="Aluminium" Color="{StaticResource Exploded.Color.Aluminium}" />
+
+    <!-- out of stock is a hatch, never a hue: statuses are never colour-alone -->
+    <SolidColorBrush x:Key="Hatch" Color="{StaticResource Exploded.Color.Ink}" Opacity="0.45" />
+
+    <!--
+        Selected row: a tint across the whole row, never an accent bar down its
+        left edge. The bar is the tell that gives away generated interfaces.
+    -->
+    <SolidColorBrush x:Key="RowSelected" Color="{StaticResource Exploded.Color.Ink}" Opacity="0.06" />
+    <SolidColorBrush x:Key="Rule" Color="{StaticResource Exploded.Color.Ink}" Opacity="0.14" />
+
+    <!--
+        Type. Static per-weight slices. The internal family name of each slice is
+        weight-suffixed, so the #fragment must match it exactly or the Skia text
+        stack silently falls back to the default sans.
+    -->
+    <FontFamily x:Key="Font.Label">ms-appx:///Assets/Fonts/IBMPlexSansCondensed-SemiBold.ttf#IBM Plex Sans Condensed SemiBold</FontFamily>
+    <FontFamily x:Key="Font.Body">ms-appx:///Assets/Fonts/IBMPlexSans-Regular.ttf#IBM Plex Sans</FontFamily>
+    <FontFamily x:Key="Font.BodyStrong">ms-appx:///Assets/Fonts/IBMPlexSans-SemiBold.ttf#IBM Plex Sans SemiBold</FontFamily>
+    <FontFamily x:Key="Font.Data">ms-appx:///Assets/Fonts/IBMPlexMono-Regular.ttf#IBM Plex Mono</FontFamily>
+    <FontFamily x:Key="Font.DataStrong">ms-appx:///Assets/Fonts/IBMPlexMono-Medium.ttf#IBM Plex Mono Medium</FontFamily>
+
+    <!--
+        No CharacterSpacing anywhere: it is a silent no-op on the Uno Skia text
+        stack, so tracking has to come from the typeface, not from a setter.
+    -->
+    <Style x:Key="PlateTitle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource Font.Label}" />
+        <Setter Property="FontSize" Value="19" />
+        <Setter Property="Foreground" Value="{StaticResource Ink}" />
+    </Style>
+
+    <Style x:Key="Label" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource Font.Label}" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="Foreground" Value="{StaticResource InkDim}" />
+    </Style>
+
+    <Style x:Key="Body" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource Font.Body}" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Foreground" Value="{StaticResource InkDim}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="LineHeight" Value="19" />
+    </Style>
+
+    <Style x:Key="PartName" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource Font.BodyStrong}" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="Foreground" Value="{StaticResource Ink}" />
+    </Style>
+
+    <Style x:Key="Data" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource Font.Data}" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Foreground" Value="{StaticResource InkDim}" />
+    </Style>
+
+    <Style x:Key="Money" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource Font.DataStrong}" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Foreground" Value="{StaticResource Ink}" />
+    </Style>
+
+    <!-- spacing: 8-based, because drafting sheets are gridded -->
+    <x:Double x:Key="Space.1">8</x:Double>
+    <x:Double x:Key="Space.2">16</x:Double>
+    <x:Double x:Key="Space.3">24</x:Double>
+    <x:Double x:Key="Space.4">40</x:Double>
+    <x:Double x:Key="Space.5">64</x:Double>
+
+    <!-- shape: a technical plate has no rounded corners to spare -->
+    <CornerRadius x:Key="Shape.Panel">4</CornerRadius>
+    <CornerRadius x:Key="Shape.Swatch">2</CornerRadius>
+
+    <!--
+        Instrument chrome. Lightweight styling only: overriding the stock brush
+        keys pulls Slider onto the plate palette with no retemplating.
+    -->
+    <SolidColorBrush x:Key="SliderTrackFill" Color="{StaticResource Exploded.Color.InkFaint}" />
+    <SolidColorBrush x:Key="SliderTrackFillPointerOver" Color="{StaticResource Exploded.Color.InkFaint}" />
+    <SolidColorBrush x:Key="SliderTrackFillPressed" Color="{StaticResource Exploded.Color.InkFaint}" />
+    <SolidColorBrush x:Key="SliderTrackValueFill" Color="{StaticResource Exploded.Color.Ink}" />
+    <SolidColorBrush x:Key="SliderTrackValueFillPointerOver" Color="{StaticResource Exploded.Color.Ink}" />
+    <SolidColorBrush x:Key="SliderTrackValueFillPressed" Color="{StaticResource Exploded.Color.Ink}" />
+    <SolidColorBrush x:Key="SliderThumbBackground" Color="{StaticResource Exploded.Color.Callout}" />
+    <SolidColorBrush x:Key="SliderThumbBackgroundPointerOver" Color="{StaticResource Exploded.Color.Callout}" />
+    <SolidColorBrush x:Key="SliderThumbBackgroundPressed" Color="{StaticResource Exploded.Color.Callout}" />
+    <SolidColorBrush x:Key="SliderInnerThumbBackground" Color="{StaticResource Exploded.Color.Callout}" />
+    <SolidColorBrush x:Key="SliderOuterThumbBackground" Color="{StaticResource Exploded.Color.Paper}" />
+
+</ResourceDictionary>

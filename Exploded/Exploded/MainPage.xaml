@@ -1,0 +1,214 @@
+<Page x:Class="Exploded.MainPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:presentation="using:Exploded.Presentation"
+      xmlns:stage="using:Exploded.Stage"
+      Background="{StaticResource Sweep}">
+
+  <Page.Resources>
+    <Style x:Key="PrimaryButton" TargetType="Button">
+      <Setter Property="Background" Value="{StaticResource Callout}" />
+      <Setter Property="Foreground" Value="{StaticResource Paper}" />
+      <Setter Property="FontFamily" Value="{StaticResource Font.Label}" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Padding" Value="16,11" />
+      <Setter Property="CornerRadius" Value="{StaticResource Shape.Swatch}" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+    </Style>
+  </Page.Resources>
+
+  <Grid Padding="24" ColumnSpacing="24" MaxWidth="1500">
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="1.55*" />
+      <ColumnDefinition Width="*" MinWidth="300" />
+    </Grid.ColumnDefinitions>
+
+    <!-- the plate -->
+    <Border
+        Background="{StaticResource Sweep}"
+        BorderBrush="{StaticResource Rule}"
+        BorderThickness="1"
+        CornerRadius="{StaticResource Shape.Panel}"
+        Padding="16">
+      <Grid RowSpacing="16">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="*" />
+          <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!--
+            Fixed design size inside a Viewbox: every measurement in the drawing
+            is written at its real number and the whole surface scales as one
+            body, which keeps geometry and callout type pixel-registered.
+        -->
+        <Viewbox Stretch="Uniform">
+          <Grid Width="960" Height="440">
+
+            <!--
+                The whole stack is one canvas element. As five layers of XAML
+                Paths it was five sheets of composition shape visuals, and Uno
+                recomputes an anti-aliasing damage path for every shape visual
+                whose transform changes, which cost about a blocking second of
+                UI thread per step of the separation slider. Inside a canvas
+                the sheets are drawing rather than visuals, so they are free to
+                move.
+            -->
+            <stage:PlateCanvas x:Name="Plate"
+                               Separation="{x:Bind Separation.Value, Mode=OneWay}"
+                               Tapped="OnPlateTapped"
+                               AutomationProperties.Name="Exploded plate" />
+
+            <!--
+                The callout system. Bubbles ride a fixed ladder rather than
+                tracking their sheet: that is the drafting convention, and it is
+                the only arrangement where they do not collide with each other
+                halfway through the scrub, when sheets are a few pixels apart.
+            -->
+            <Canvas x:Name="Leaders" IsHitTestVisible="False"
+                    Opacity="{x:Bind CalloutFade(Separation.Value), Mode=OneWay}">
+              <Path Data="{x:Bind LeaderLine(Separation.Value, 4), Mode=OneWay}" Stroke="{StaticResource Callout}" StrokeThickness="1" />
+              <Path Data="{x:Bind LeaderLine(Separation.Value, 3), Mode=OneWay}" Stroke="{StaticResource Callout}" StrokeThickness="1" />
+              <Path Data="{x:Bind LeaderLine(Separation.Value, 2), Mode=OneWay}" Stroke="{StaticResource Callout}" StrokeThickness="1" />
+              <Path Data="{x:Bind LeaderLine(Separation.Value, 1), Mode=OneWay}" Stroke="{StaticResource Callout}" StrokeThickness="1" />
+              <Path Data="{x:Bind LeaderLine(Separation.Value, 0), Mode=OneWay}" Stroke="{StaticResource Callout}" StrokeThickness="1" />
+            </Canvas>
+
+            <Canvas x:Name="Bubbles" IsHitTestVisible="False"
+                    Opacity="{x:Bind CalloutFade(Separation.Value), Mode=OneWay}" />
+          </Grid>
+        </Viewbox>
+
+        <!--
+            Title block and instrument sit outside the Viewbox so their type
+            stays at real size however the drawing scales.
+        -->
+        <Grid Grid.Row="1" ColumnSpacing="24">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+
+          <Border BorderBrush="{StaticResource Rule}" BorderThickness="1" Padding="12,10">
+            <StackPanel Spacing="3">
+              <TextBlock Text="EXPLODED VIEW" Style="{StaticResource Label}" Foreground="{StaticResource Ink}" />
+              <TextBlock x:Name="TitleFormFactor" Style="{StaticResource Label}" />
+              <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,4,0,0">
+                <TextBlock Text="SCALE 1:1" Style="{StaticResource Data}" FontSize="10" />
+                <TextBlock x:Name="TitleRevision" Style="{StaticResource Data}" FontSize="10" />
+                <TextBlock Text="SHEET 1 OF 1" Style="{StaticResource Data}" FontSize="10" />
+              </StackPanel>
+            </StackPanel>
+          </Border>
+
+          <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+            <Grid>
+              <TextBlock Text="SEPARATION" Style="{StaticResource Label}" />
+              <TextBlock Text="{x:Bind StageHint(Separation.Value), Mode=OneWay}"
+                         Style="{StaticResource Label}"
+                         HorizontalAlignment="Right"
+                         Foreground="{StaticResource InkFaint}" />
+            </Grid>
+            <Slider x:Name="Separation" Minimum="0" Maximum="100" Value="0"
+                    StepFrequency="1" SmallChange="5" LargeChange="20"
+                    AutomationProperties.Name="Separation" />
+          </StackPanel>
+        </Grid>
+      </Grid>
+    </Border>
+
+    <!-- the parts table -->
+    <Border Grid.Column="1"
+            Background="{StaticResource Paper}"
+            BorderBrush="{StaticResource Rule}"
+            BorderThickness="1"
+            CornerRadius="{StaticResource Shape.Panel}"
+            Padding="20">
+      <Grid RowSpacing="12">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="*" />
+          <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Spacing="10">
+          <Grid>
+            <TextBlock Text="PARTS LIST" Style="{StaticResource Label}" Foreground="{StaticResource Ink}" />
+            <TextBlock x:Name="KitName" Style="{StaticResource Label}" HorizontalAlignment="Right" />
+          </Grid>
+          <Border Height="1" Background="{StaticResource Rule}" />
+        </StackPanel>
+
+        <ScrollViewer Grid.Row="1"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollMode="Disabled">
+          <ItemsControl x:Name="PartsList" VerticalAlignment="Top">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="presentation:PartRow">
+              <Grid Background="{x:Bind RowBackground, Mode=OneWay}"
+                    Padding="8,11"
+                    ColumnSpacing="12"
+                    Tapped="OnRowTapped"
+                    AutomationProperties.Name="{x:Bind Name}">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="Auto" />
+                  <ColumnDefinition Width="Auto" />
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Text="{x:Bind NumberLabel}"
+                           Style="{StaticResource Data}"
+                           Foreground="{x:Bind NumberBrush, Mode=OneWay}"
+                           VerticalAlignment="Top" />
+
+                <Grid Grid.Column="1" Width="18" Height="18" VerticalAlignment="Top" Margin="0,1,0,0">
+                  <Border Background="{x:Bind SwatchBrush}"
+                          BorderBrush="{StaticResource Ink}"
+                          BorderThickness="0.8"
+                          CornerRadius="{StaticResource Shape.Swatch}" />
+                  <Path Data="{x:Bind HatchGeometry}"
+                        Stroke="{StaticResource Hatch}"
+                        StrokeThickness="1"
+                        Visibility="{x:Bind HatchVisibility}" />
+                </Grid>
+
+                <StackPanel Grid.Column="2" Spacing="2">
+                  <TextBlock Text="{x:Bind Name}" Style="{StaticResource PartName}" />
+                  <TextBlock Text="{x:Bind Spec}" Style="{StaticResource Body}" FontSize="12" />
+                  <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,3,0,0">
+                    <TextBlock Text="{x:Bind Sku}" Style="{StaticResource Data}" FontSize="11" Foreground="{StaticResource InkFaint}" />
+                    <StackPanel Orientation="Horizontal" Spacing="5"
+                                Visibility="{x:Bind InBuildVisibility, Mode=OneWay}">
+                      <Rectangle Width="7" Height="7" Fill="{StaticResource Board}" VerticalAlignment="Center" />
+                      <TextBlock Text="IN BUILD" Style="{StaticResource Label}" FontSize="10" Foreground="{StaticResource Board}" />
+                    </StackPanel>
+                  </StackPanel>
+                </StackPanel>
+
+                <StackPanel Grid.Column="3" Spacing="3" HorizontalAlignment="Right">
+                  <TextBlock Text="{x:Bind PriceLabel}" Style="{StaticResource Money}" HorizontalAlignment="Right" />
+                  <TextBlock Text="{x:Bind StatusLabel}" Style="{StaticResource Label}" FontSize="10"
+                             HorizontalAlignment="Right"
+                             Foreground="{StaticResource InkFaint}" />
+                </StackPanel>
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+
+        <StackPanel Grid.Row="2" Spacing="12">
+          <Border Height="1" Background="{StaticResource Rule}" />
+          <Grid>
+            <TextBlock Text="BUILD TOTAL" Style="{StaticResource Label}" Foreground="{StaticResource Ink}" VerticalAlignment="Center" />
+            <TextBlock x:Name="BuildTotal" Style="{StaticResource Money}" FontSize="17" HorizontalAlignment="Right" />
+          </Grid>
+          <TextBlock x:Name="BuildHint" Style="{StaticResource Body}" FontSize="12" />
+          <Button x:Name="ToggleButton" Style="{StaticResource PrimaryButton}" Click="OnToggleBuild" />
+        </StackPanel>
+      </Grid>
+    </Border>
+  </Grid>
+</Page>
