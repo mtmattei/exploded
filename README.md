@@ -48,7 +48,7 @@ The spec notes that with a dev-channel Uno.Sdk a Debug build launched without th
 Prototype. Implemented:
 
 - The plate, explode slider, callouts, two-way selection between stage and table, add/remove with a build total.
-- Narrow layout below 1000 px: stage on top at a capped height, slider and title block under it, parts table filling the rest with the total and Add pinned at the bottom. The desktop window floor is 360 x 640 (it exists to keep the Win32 render thread away from degenerate sizes, see `App.xaml.cs`).
+- Narrow layout below 1000 px: stage on top at a capped height, slider and title block under it, parts table filling the rest with the total and Add pinned at the bottom. Below 600 px wide the title block is dropped so the table keeps a full row. The desktop window floor is 360 x 640 (it exists to keep the Win32 render thread away from degenerate sizes, see `App.xaml.cs`).
 - Keyboard: rows are tab stops, focusing a row selects it, Up/Down move between rows, Enter/Space add or remove the focused part. Rows announce number, name, spec, price, stock and build state to screen readers.
 
 - MVUX `BuildModel` with `FeedView` loading, error and none states.

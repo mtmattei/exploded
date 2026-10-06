@@ -155,6 +155,26 @@
           </VisualState.Setters>
         </VisualState>
       </VisualStateGroup>
+
+      <!--
+          Phone width: the title block goes, so the parts table keeps at least a
+          full row above the pinned footer. The kit stays named in the table head.
+      -->
+      <VisualStateGroup x:Name="Compactness">
+        <VisualState x:Name="Regular">
+          <VisualState.StateTriggers>
+            <AdaptiveTrigger MinWindowWidth="600" />
+          </VisualState.StateTriggers>
+        </VisualState>
+        <VisualState x:Name="Compact">
+          <VisualState.StateTriggers>
+            <AdaptiveTrigger MinWindowWidth="0" />
+          </VisualState.StateTriggers>
+          <VisualState.Setters>
+            <Setter Target="TitleBlock.Visibility" Value="Collapsed" />
+          </VisualState.Setters>
+        </VisualState>
+      </VisualStateGroup>
     </VisualStateManager.VisualStateGroups>
 
     <!-- the plate -->
