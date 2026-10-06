@@ -176,9 +176,16 @@ public sealed partial class MainPage : Page
         }
     }
 
+    /// <summary>
+    /// Keyboard focus selects, so Tab and the arrows walk the table. Pointer and
+    /// programmatic focus do not: a tap selects through Tapped, and when a
+    /// re-emit replaces the focused row the focus manager falls back to the
+    /// first row, which must not undo the selection the user just made.
+    /// </summary>
     private void OnRowFocused(object sender, RoutedEventArgs e)
     {
-        if (sender is Control { DataContext: PartLine line } row && line.Key != ViewModel.SelectedLayer)
+        if (sender is Control { DataContext: PartLine line, FocusState: FocusState.Keyboard } row
+            && line.Key != ViewModel.SelectedLayer)
         {
             HoldFocus(line.Key, row.FocusState);
             Select(line.Key);

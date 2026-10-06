@@ -18,9 +18,13 @@ Uno's input injector has no keyboard on Skia, so key behaviour is driven through
 `MainPage.HandleRowKey`, and focus moves use `FocusState.Keyboard` (what a Tab
 produces). Pointer input is injected for real.
 
-## Status
+## Coverage
 
-5 of 8 pass. The three tests that tap a row with injected pointer input fail:
-the press, release and Tapped events reach the page at the row's centre, but the
-selection does not change. Under investigation; see the commit that added these
-tests.
+Load state; tapping a row selects it on the table, the stage and the button;
+Add marks the part and counts the total; an out-of-stock part disables Add;
+keyboard focus selects a row and survives the row being re-emitted; Down/Up
+walk the table; Enter/Space toggle with focus kept on the row.
+
+The tap tests found a real regression on their first run: the focus manager's
+fallback after a re-emit was being treated as a user selection and undid every
+click. Rows now select on focus only when the focus came from the keyboard.

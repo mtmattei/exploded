@@ -14,6 +14,7 @@ An exploded-view parts catalog for a 60% mechanical keyboard, built with Uno Pla
 | `Exploded/Exploded/Presentation/` | MVUX `BuildModel`, `BuildList` / `PartAction` / `PartLine` records, and two small converters |
 | `Exploded/Exploded/Themes/Tokens.xaml` | Color, type, spacing and shape tokens |
 | `Exploded/Exploded.Tests/` | NUnit tests for `BuildModel` and the build records |
+| `Exploded/Exploded/RuntimeTests/` | In-app UI tests (Uno runtime-tests engine), built only with `-p:RuntimeTests=true`; see its README |
 | `Exploded/EXPLODED-SPEC.md` | Architecture, design and interaction brief plus implementation plan |
 | `Exploded/tools/Capture-Window.ps1` | Windows script that captures a running app window to PNG |
 | `Exploded/shots/` | Screenshots |
@@ -54,6 +55,7 @@ Prototype. Implemented:
 - MVUX `BuildModel` with `FeedView` loading, error and none states.
 
 - Unit tests for `BuildModel`, `BuildList` and `PartAction`.
+- In-app UI tests for selection, the build flow and keyboard focus, run headless under Xvfb.
 - The build total counts to each new value (280 ms, EaseSmooth) through the `CountUp.Amount` attached property, and sets at once when OS animations are off.
 
 ![Narrow layout](Exploded/shots/narrow.png)
