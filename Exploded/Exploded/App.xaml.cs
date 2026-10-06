@@ -51,10 +51,12 @@ public partial class App : Application
 
         // Uno's Win32 GL render thread access-violates in wglMakeCurrent when the
         // window reaches a degenerate size, so the window is floored well above it.
+        // 360 x 640 is a small phone: the narrow layout still shows the plate, the
+        // instrument, a scrolling row of the table and the pinned build footer.
         if (MainWindow.AppWindow.Presenter is OverlappedPresenter presenter)
         {
-            presenter.PreferredMinimumWidth = 900;
-            presenter.PreferredMinimumHeight = 560;
+            presenter.PreferredMinimumWidth = 360;
+            presenter.PreferredMinimumHeight = 640;
         }
 
         // Ensure the current window is active
