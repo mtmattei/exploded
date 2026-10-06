@@ -48,13 +48,12 @@ The spec notes that with a dev-channel Uno.Sdk a Debug build launched without th
 Prototype. Implemented:
 
 - The plate, explode slider, callouts, two-way selection between stage and table, add/remove with a build total.
-- Narrow layout below 1000 px: stage on top at a capped height, slider and title block under it, parts table filling the rest with the total and Add pinned at the bottom. On desktop the window floor is 900 px (a Win32 render-thread workaround in `App.xaml.cs`), so narrow shows between 900 and 999 px.
+- Narrow layout below 1000 px: stage on top at a capped height, slider and title block under it, parts table filling the rest with the total and Add pinned at the bottom. The desktop window floor is 360 x 640 (it exists to keep the Win32 render thread away from degenerate sizes, see `App.xaml.cs`).
 - Keyboard: rows are tab stops, focusing a row selects it, Up/Down move between rows, Enter/Space add or remove the focused part. Rows announce number, name, spec, price, stock and build state to screen readers.
 
 - MVUX `BuildModel` with `FeedView` loading, error and none states.
 
 - Unit tests for `BuildModel`, `BuildList` and `PartAction`.
-
-Not yet: the total counting up on add (spec Motion section).
+- The build total counts to each new value (280 ms, EaseSmooth) through the `CountUp.Amount` attached property, and sets at once when OS animations are off.
 
 ![Narrow layout](Exploded/shots/narrow.png)

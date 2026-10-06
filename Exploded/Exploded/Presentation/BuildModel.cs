@@ -43,7 +43,8 @@ public partial record BuildModel(IPartsCatalog Catalog)
     public IFeed<string> FormFactor => Kit.Select(kit => kit.FormFactor);
     public IFeed<string> Revision => Kit.Select(kit => kit.Revision);
 
-    public IFeed<string> TotalLabel => Build.Select(build => build.TotalLabel);
+    /// <summary>A number rather than a label, so the view can count between totals.</summary>
+    public IFeed<decimal> Total => Build.Select(build => build.Total);
     public IFeed<string> BuildHint => Build.Select(build => build.Hint);
 
     public IFeed<PartAction> Action => Feed

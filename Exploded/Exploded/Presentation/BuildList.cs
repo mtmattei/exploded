@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Linq;
 using Exploded.Catalog;
 
@@ -11,7 +10,7 @@ public record BuildList(ImmutableList<Part> Parts)
 
     public decimal Total => Parts.Sum(p => p.Price);
 
-    public string TotalLabel => "$" + Total.ToString("0.00", CultureInfo.InvariantCulture);
+    public string TotalLabel => Part.FormatPrice(Total);
 
     public string Hint => Parts.Count switch
     {

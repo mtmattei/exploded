@@ -32,7 +32,9 @@ public record Part(
     public bool IsAvailable => Status != Availability.OutOfStock;
 
     /// <summary>Formatted invariantly so the plate reads the same on any machine locale.</summary>
-    public string PriceLabel => "$" + Price.ToString("0.00", CultureInfo.InvariantCulture);
+    public string PriceLabel => FormatPrice(Price);
+
+    public static string FormatPrice(decimal amount) => "$" + amount.ToString("0.00", CultureInfo.InvariantCulture);
 
     public string StatusLabel => Status switch
     {

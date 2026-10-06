@@ -338,7 +338,8 @@
           <Border Height="1" Background="{StaticResource Rule}" />
           <Grid>
             <TextBlock Text="BUILD TOTAL" Style="{StaticResource Label}" Foreground="{StaticResource Ink}" VerticalAlignment="Center" />
-            <TextBlock Text="{Binding TotalLabel}" Style="{StaticResource Money}" FontSize="17" HorizontalAlignment="Right" />
+            <TextBlock presentation:CountUp.Amount="{Binding Total}"
+                       Style="{StaticResource Money}" FontSize="17" HorizontalAlignment="Right" />
           </Grid>
           <TextBlock Text="{Binding BuildHint}" Style="{StaticResource Body}" FontSize="12" />
           <Button Style="{StaticResource PrimaryButton}"

@@ -35,7 +35,7 @@ public class BuildModelTests
     public async Task Opens_on_the_keycaps_with_an_empty_build()
     {
         Assert.That(await _model.SelectedLayer, Is.EqualTo(BuildModel.InitialLayer));
-        Assert.That(await _model.TotalLabel, Is.EqualTo("$0.00"));
+        Assert.That(await _model.Total, Is.EqualTo(0m));
         Assert.That((await _model.Action)!.Label, Is.EqualTo("Add keycaps to build"));
     }
 
@@ -55,13 +55,13 @@ public class BuildModelTests
         await SelectAsync(PlateLayer);
         await _model.ToggleSelected(CancellationToken.None);
 
-        await Eventually(() => _model.TotalLabel, "$48.00");
+        await Eventually(() => _model.Total, 48.00m);
         await Eventually(() => _model.Lines.AsFeed(), l => l!.Single(x => x.Key == PlateLayer).IsInBuild);
         await Eventually(() => _model.Action, a => a?.Label == "Remove plate");
 
         await _model.ToggleSelected(CancellationToken.None);
 
-        await Eventually(() => _model.TotalLabel, "$0.00");
+        await Eventually(() => _model.Total, 0m);
     }
 
     [Test]
