@@ -75,15 +75,10 @@ public sealed partial class MainPage : Page
     /// </summary>
     private static PlatePalette StagePalette() => new(
         Ink: Token("Ink"),
+        InkDim: Token("InkDim"),
         InkFaint: Token("InkFaint"),
         Sweep: Token("Sweep"),
-        Paper: Token("Paper"),
-        Callout: Token("Callout"),
-        Board: Token("Board"),
-        Keycap: Token("Keycap"),
-        Housing: Token("Housing"),
-        Steel: Token("Steel"),
-        Aluminium: Token("Aluminium"));
+        Callout: Token("Callout"));
 
     private static SkiaSharp.SKColor Token(string key)
     {

@@ -2,7 +2,7 @@
 
 An exploded-view parts catalog for a 60% mechanical keyboard, built with Uno Platform. A slider pulls the five layers of the build (case, PCB, plate, switches, keycaps) apart along the build axis; each layer has a numbered callout, a row in the parts table with SKU, price and stock status, and can be added to a build with a running total.
 
-![Assembled plate](Exploded/shots/plate-assembled.png)
+![Exploded, plate selected](Exploded/shots/exploded.png)
 
 ## What's in it
 
@@ -10,7 +10,7 @@ An exploded-view parts catalog for a 60% mechanical keyboard, built with Uno Pla
 |---|---|
 | `Exploded/Exploded/` | The app (Uno single project, one page) |
 | `Exploded/Exploded/Catalog/` | `Part` record, async `IPartsCatalog` and a hardcoded in-memory kit of five parts |
-| `Exploded/Exploded/Stage/` | Explode math (`SheetMatrix`, callout fade, leader lines), key layout table, and the SkiaSharp plate renderer |
+| `Exploded/Exploded/Stage/` | Isometric geometry ported from Hairline (`Iso.cs`), the five layers and their camera (`Stack.cs`), callouts (`Explode.cs`), key layout table, and the SkiaSharp renderer |
 | `Exploded/Exploded/Presentation/` | MVUX `BuildModel`, `BuildList` / `PartAction` / `PartLine` records, and two small converters |
 | `Exploded/Exploded/Themes/Tokens.xaml` | Color, type, spacing and shape tokens |
 | `Exploded/Exploded.Tests/` | NUnit tests for `BuildModel` and the build records |
@@ -23,7 +23,8 @@ An exploded-view parts catalog for a 60% mechanical keyboard, built with Uno Pla
 
 - Uno Platform single project, `Uno.Sdk` 6.8.0-dev.12 (`global.json`), targets `net10.0-desktop` plus a plain `net10.0` that exists so the test project can reference the app
 - `UnoFeatures`: `SkiaRenderer; Mvux`
-- The stage is a single `SKCanvasElement` (`PlateCanvas`). Each sheet is recorded once into an `SKPicture` and replayed under its own matrix, so moving the slider is one invalidation. The spec explains why XAML `Path` layers were dropped (per-frame cost on the UI thread).
+- The stage is a single `SKCanvasElement` (`PlateCanvas`), drawn in the manner of [Hairline](https://github.com/lucasmarkes/hairline) (MIT): every part a rounded solid shown as a silhouette and one dim crease, filled with the ground colour and painted back to front. The selected layer's silhouette turns callout orange; there are no other fills or colours on the stage. `Exploded/design/hairline/` holds the web reference figure it was ported from.
+- Layers only rise straight up, which in an orthographic camera is a screen translation, so each layer is recorded once into an `SKPicture` and a slider step replays five pictures under five offsets plus the dashed drops. The spec explains why XAML `Path` layers were dropped (per-frame cost on the UI thread).
 - Separation drives the leader lines, callout fade and stage hint through `x:Bind` function bindings on `MainPage`.
 - Kit, selection and build live in the MVUX `BuildModel`; the generated `BuildViewModel` is the page's DataContext. The parts table is a `FeedView` over `Lines` with progress, error (Retry) and none states. Separation stays out of MVUX and on `x:Bind`, because it changes on every pointer move.
 - Code-behind keeps view-only work: the Skia stage, the callout bubbles, and keyboard focus. Each selection or build change re-emits the rows and the table replaces the changed ones, so the page re-focuses the row the user was on when its replacement loads.

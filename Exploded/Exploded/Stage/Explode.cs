@@ -5,51 +5,15 @@ using Windows.Foundation;
 namespace Exploded.Stage;
 
 /// <summary>
-/// The explode transform, ported from the StrataApp composition study and
-/// retuned for five physical parts rather than three flat sheets.
-///
-/// Uno implements neither UIElement.Transform3D nor a nestable PlaneProjection,
-/// so the deck is tipped back by RotationX, spun by RotationZ, and each sheet is
-/// lifted along the deck's normal here, then handed to a plain MatrixTransform.
-///
-/// A point (x, y, gap) on sheet n maps through Rx(tilt) . Rz(spin) to
-///   X = x.cos s - y.sin s
-///   Y = (x.sin s + y.cos s).cos t - gap.sin t
-/// which is affine in x and y, so the whole thing collapses into one 2x3 matrix
-/// per sheet. The sheet's own depth survives as the OffsetY term and as a slight
-/// scale-up for the sheets nearest the viewer.
+/// The stage's fixed measurements and the callout system. Where the layers
+/// sit and how they rise is <see cref="Stack"/>; this class owns the
+/// separation value's meaning, the callout ladder and the leader lines.
 /// </summary>
 internal static class Explode
 {
-    /// <summary>
-    /// Tip-back at full separation. Shallower than Strata's 56 degrees: a
-    /// keyboard is wide and shallow, and a steep tilt crushes it into a bar.
-    /// </summary>
-    private const double TiltDegrees = 52d;
-
-    /// <summary>
-    /// In-plane spin at full separation. Much smaller than Strata's 34 degrees,
-    /// because spinning a 15u-wide object that far sweeps a bounding box half
-    /// again as large and reads as chaos rather than as a drawing.
-    /// </summary>
-    private const double SpinDegrees = -14d;
-
-    /// <summary>Gap between neighbouring sheets along the deck normal.</summary>
-    private const double SheetGap = 44d;
-
-    /// <summary>Viewer distance for the perspective foreshortening.</summary>
-    private const double Perspective = 1600d;
-
     /// <summary>Stage design size. Every measurement is written at its real number; the Viewbox scales the whole surface.</summary>
     public const double StageWidth = 960d;
     public const double StageHeight = 440d;
-
-    /// <summary>
-    /// Where the assembled stack sits. Pushed below centre because the explode
-    /// only ever grows upward, so the headroom has to be reserved for it.
-    /// </summary>
-    public const double StackCentreX = StageWidth / 2d;
-    public const double StackCentreY = 275d;
 
     /// <summary>The callout ladder: five bubbles on a fixed rail down the right of the plate.</summary>
     public const double BubbleX = 838d;
@@ -60,33 +24,7 @@ internal static class Explode
     public const int LayerCount = 5;
 
     /// <summary>Separation as 0..1.</summary>
-    private static double T(double separation) => Math.Clamp(separation / 100d, 0d, 1d);
-
-    /// <summary>Layer 0 is the case at the bottom of the stack; layer 4 is the keycaps on top.</summary>
-    public static Matrix SheetMatrix(double separation, int layerIndex)
-    {
-        var t = T(separation);
-        var tilt = TiltDegrees * t * Math.PI / 180d;
-        var spin = SpinDegrees * t * Math.PI / 180d;
-        var gap = SheetGap * layerIndex * t;
-
-        var cosT = Math.Cos(tilt);
-        var sinT = Math.Sin(tilt);
-        var cosS = Math.Cos(spin);
-        var sinS = Math.Sin(spin);
-
-        // the deck shrinks a little as it tips away; each sheet then gains back
-        // the perspective scale it earns by sitting closer to the viewer
-        var scale = (1d - t * 0.06d) * (Perspective / (Perspective - gap * cosT));
-
-        return new Matrix(
-            m11: scale * cosS,
-            m12: scale * sinS * cosT,
-            m21: scale * -sinS,
-            m22: scale * cosS * cosT,
-            offsetX: 0d,
-            offsetY: -gap * sinT);
-    }
+    public static double T(double separation) => Math.Clamp(separation / 100d, 0d, 1d);
 
     /// <summary>Callout number, read top down the way a parts list is numbered: keycaps are part 1.</summary>
     public static int CalloutNumber(int layerIndex) => LayerCount - layerIndex;
@@ -96,21 +34,17 @@ internal static class Explode
         => new(BubbleX, BubbleTop + (CalloutNumber(layerIndex) - 1) * BubbleSpacing);
 
     /// <summary>
-    /// The leader line from a sheet's right edge out to its callout bubble.
+    /// The leader line from a layer's right corner out to its callout bubble.
     ///
     /// The bubbles sit on a fixed ladder rather than tracking their sheet, which
     /// is both the drafting convention and the only way they avoid colliding
-    /// with each other in the middle of the scrub, where sheets are only a few
+    /// with each other in the middle of the scrub, where layers are only a few
     /// pixels apart. The last segment lands horizontally into the bubble.
     /// </summary>
     public static Geometry LeaderLine(double separation, int layerIndex)
     {
-        var matrix = SheetMatrix(separation, layerIndex);
-        var halfWidth = KeyLayout.CaseWidth / 2d;
-
-        var anchor = new Point(
-            StackCentreX + halfWidth * matrix.M11,
-            StackCentreY + halfWidth * matrix.M12 + matrix.OffsetY);
+        var corner = Stack.Anchors[layerIndex];
+        var anchor = new Point(corner.X, corner.Y + Stack.Lift(layerIndex, separation));
 
         var bubble = BubbleCentre(layerIndex);
         var landing = new Point(bubble.X - BubbleRadius - 18d, bubble.Y);

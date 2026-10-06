@@ -166,6 +166,15 @@ per sheet, so a rectangle stays a parallelogram and real part thickness is not
 modelled. That is exactly what an exploded plate in a service manual does, so the
 constraint and the archetype agree. No part gets extruded.
 
+**As built (Hairline port):** the tilt-and-spin sheet matrix is replaced by an
+orthographic isometric camera (azimuth 30, elevation sin 0.5) and real solids:
+a tray case, PCB with sockets and USB-C port, plate with cutouts, tapered switch
+housings with stems, and sculpted keycaps tapered from foot to top. The geometry
+is a C# port of Hairline's `core/iso.ts` (MIT). Every layer rises straight up, a
+pure screen translation in this camera, so the one-picture-per-layer replay is
+kept. Azimuth is 30 rather than Hairline's 45 because this stage is a 2.2:1
+strip and 45 left the drawing height-bound at a third of the width.
+
 ### Platform constraints to design around
 
 - `TextBlock.CharacterSpacing` is a **no-op** on the Uno Skia text stack. Do not plan
