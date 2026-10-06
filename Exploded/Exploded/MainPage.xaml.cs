@@ -207,30 +207,41 @@ public sealed partial class MainPage : Page
     /// </summary>
     private void OnRowKeyDown(object sender, KeyRoutedEventArgs e)
     {
-        if (sender is not FrameworkElement { DataContext: PartLine line } row
+        if (sender is Control row)
+        {
+            e.Handled = HandleRowKey(row, e.Key);
+        }
+    }
+
+    /// <summary>
+    /// The key behaviour of a row, apart from the event so the runtime tests
+    /// can drive it: Uno's input injector has no keyboard on Skia.
+    /// </summary>
+    internal bool HandleRowKey(Control row, VirtualKey key)
+    {
+        if (row is not { DataContext: PartLine line }
             || VisualTreeHelper.GetParent(row) is not DependencyObject container
             || ItemsControl.ItemsControlFromItemContainer(container) is not ItemsControl list)
         {
-            return;
+            return false;
         }
 
         var index = list.IndexFromContainer(container);
 
-        switch (e.Key)
+        switch (key)
         {
             case VirtualKey.Down:
-                e.Handled = FocusRow(list, index + 1);
-                break;
+                return FocusRow(list, index + 1);
             case VirtualKey.Up:
-                e.Handled = FocusRow(list, index - 1);
-                break;
+                return FocusRow(list, index - 1);
             case VirtualKey.Enter:
             case VirtualKey.Space:
-                HoldFocus(line.Key, ((Control)row).FocusState);
+                HoldFocus(line.Key, row.FocusState);
                 Select(line.Key);
                 ViewModel.ToggleSelected.Execute(null);
-                e.Handled = true;
-                break;
+                return true;
+            default:
+                return false;
         }
     }
 
