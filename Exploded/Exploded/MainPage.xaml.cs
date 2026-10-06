@@ -5,11 +5,13 @@ using Exploded.Catalog;
 using Exploded.Presentation;
 using Exploded.Stage;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Shapes;
 using Windows.Foundation;
+using Windows.System;
 
 namespace Exploded;
 
@@ -157,6 +159,11 @@ public sealed partial class MainPage : Page
         foreach (var row in _rows)
         {
             row.IsSelected = row.LayerIndex == layerIndex;
+
+            if (row.IsSelected)
+            {
+                AutomationProperties.SetName(Plate, $"Exploded plate, {row.AutomationName} selected");
+            }
         }
 
         UpdateAction();
@@ -182,9 +189,56 @@ public sealed partial class MainPage : Page
         }
     }
 
+    private void OnRowFocused(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: PartRow row } && row.LayerIndex != _selected)
+        {
+            Select(row.LayerIndex);
+        }
+    }
+
+    /// <summary>
+    /// Up and Down walk the table, Enter and Space toggle the focused part in
+    /// the build. Focus moves row to row by index so it can never wander out of
+    /// the table the way directional XY focus would.
+    /// </summary>
+    private void OnRowKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: PartRow row })
+        {
+            return;
+        }
+
+        var index = _rows.IndexOf(row);
+
+        switch (e.Key)
+        {
+            case VirtualKey.Down when index < _rows.Count - 1:
+                e.Handled = FocusRow(index + 1);
+                break;
+            case VirtualKey.Up when index > 0:
+                e.Handled = FocusRow(index - 1);
+                break;
+            case VirtualKey.Enter:
+            case VirtualKey.Space:
+                Select(row.LayerIndex);
+                ToggleSelected();
+                e.Handled = true;
+                break;
+        }
+    }
+
+    private bool FocusRow(int index)
+        => PartsList.ContainerFromIndex(index) is DependencyObject container
+           && VisualTreeHelper.GetChildrenCount(container) > 0
+           && VisualTreeHelper.GetChild(container, 0) is Control control
+           && control.Focus(FocusState.Keyboard);
+
     // ── the build ─────────────────────────────────────────────────────────
 
-    private void OnToggleBuild(object sender, RoutedEventArgs e)
+    private void OnToggleBuild(object sender, RoutedEventArgs e) => ToggleSelected();
+
+    private void ToggleSelected()
     {
         var row = _rows.FirstOrDefault(r => r.LayerIndex == _selected);
 

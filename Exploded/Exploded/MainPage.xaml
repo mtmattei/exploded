@@ -19,14 +19,58 @@
     </Style>
   </Page.Resources>
 
-  <Grid Padding="24" ColumnSpacing="24" MaxWidth="1500">
+  <Grid x:Name="Root" Padding="24" ColumnSpacing="24" MaxWidth="1500">
     <Grid.ColumnDefinitions>
-      <ColumnDefinition Width="1.55*" />
-      <ColumnDefinition Width="*" MinWidth="300" />
+      <ColumnDefinition x:Name="StageColumn" Width="1.55*" />
+      <ColumnDefinition x:Name="PartsColumn" Width="*" MinWidth="300" />
     </Grid.ColumnDefinitions>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <!--
+        Wide: the drawing and its parts table side by side. Narrow: the drawing
+        on top at a capped height, the table below it filling the rest, so the
+        table's own footer (total and Add) stays pinned to the bottom edge.
+    -->
+    <VisualStateManager.VisualStateGroups>
+      <VisualStateGroup x:Name="Layout">
+        <VisualState x:Name="Wide">
+          <VisualState.StateTriggers>
+            <AdaptiveTrigger MinWindowWidth="1000" />
+          </VisualState.StateTriggers>
+        </VisualState>
+        <VisualState x:Name="Narrow">
+          <VisualState.StateTriggers>
+            <AdaptiveTrigger MinWindowWidth="0" />
+          </VisualState.StateTriggers>
+          <VisualState.Setters>
+            <Setter Target="Root.Padding" Value="16" />
+            <Setter Target="Root.RowSpacing" Value="16" />
+            <Setter Target="Root.ColumnSpacing" Value="0" />
+            <Setter Target="StageColumn.Width" Value="*" />
+            <Setter Target="PartsColumn.Width" Value="0" />
+            <Setter Target="PartsColumn.MinWidth" Value="0" />
+            <Setter Target="StagePanel.(Grid.RowSpan)" Value="1" />
+            <Setter Target="PartsPanel.(Grid.Row)" Value="1" />
+            <Setter Target="PartsPanel.(Grid.RowSpan)" Value="1" />
+            <Setter Target="PartsPanel.(Grid.Column)" Value="0" />
+            <Setter Target="StageView.MaxHeight" Value="300" />
+            <Setter Target="SeparationControl.(Grid.Column)" Value="0" />
+            <Setter Target="SeparationControl.(Grid.ColumnSpan)" Value="2" />
+            <Setter Target="TitleBlock.(Grid.Row)" Value="1" />
+            <Setter Target="TitleBlock.HorizontalAlignment" Value="Left" />
+            <Setter Target="TitleBlock.(Grid.ColumnSpan)" Value="2" />
+            <Setter Target="ScaleLine.Visibility" Value="Collapsed" />
+          </VisualState.Setters>
+        </VisualState>
+      </VisualStateGroup>
+    </VisualStateManager.VisualStateGroups>
 
     <!-- the plate -->
-    <Border
+    <Border x:Name="StagePanel"
+        Grid.RowSpan="2"
         Background="{StaticResource Sweep}"
         BorderBrush="{StaticResource Rule}"
         BorderThickness="1"
@@ -43,7 +87,7 @@
             is written at its real number and the whole surface scales as one
             body, which keeps geometry and callout type pixel-registered.
         -->
-        <Viewbox Stretch="Uniform">
+        <Viewbox x:Name="StageView" Stretch="Uniform">
           <Grid Width="960" Height="440">
 
             <!--
@@ -84,25 +128,29 @@
             Title block and instrument sit outside the Viewbox so their type
             stays at real size however the drawing scales.
         -->
-        <Grid Grid.Row="1" ColumnSpacing="24">
+        <Grid Grid.Row="1" ColumnSpacing="24" RowSpacing="12">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="*" />
           </Grid.ColumnDefinitions>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+          </Grid.RowDefinitions>
 
-          <Border BorderBrush="{StaticResource Rule}" BorderThickness="1" Padding="12,10">
+          <Border x:Name="TitleBlock" BorderBrush="{StaticResource Rule}" BorderThickness="1" Padding="12,10">
             <StackPanel Spacing="3">
               <TextBlock Text="EXPLODED VIEW" Style="{StaticResource Label}" Foreground="{StaticResource Ink}" />
               <TextBlock x:Name="TitleFormFactor" Style="{StaticResource Label}" />
               <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,4,0,0">
-                <TextBlock Text="SCALE 1:1" Style="{StaticResource Data}" FontSize="10" />
+                <TextBlock x:Name="ScaleLine" Text="SCALE 1:1" Style="{StaticResource Data}" FontSize="10" />
                 <TextBlock x:Name="TitleRevision" Style="{StaticResource Data}" FontSize="10" />
                 <TextBlock Text="SHEET 1 OF 1" Style="{StaticResource Data}" FontSize="10" />
               </StackPanel>
             </StackPanel>
           </Border>
 
-          <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+          <StackPanel x:Name="SeparationControl" Grid.Column="1" Spacing="4" VerticalAlignment="Center">
             <Grid>
               <TextBlock Text="SEPARATION" Style="{StaticResource Label}" />
               <TextBlock Text="{x:Bind StageHint(Separation.Value), Mode=OneWay}"
@@ -119,7 +167,9 @@
     </Border>
 
     <!-- the parts table -->
-    <Border Grid.Column="1"
+    <Border x:Name="PartsPanel"
+            Grid.Column="1"
+            Grid.RowSpan="2"
             Background="{StaticResource Paper}"
             BorderBrush="{StaticResource Rule}"
             BorderThickness="1"
@@ -146,11 +196,23 @@
           <ItemsControl x:Name="PartsList" VerticalAlignment="Top">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="presentation:PartRow">
+              <!--
+                  A ContentControl only to make the row a keyboard stop: panels
+                  cannot take focus. Focusing a row selects it, so Tab and the
+                  arrow keys walk the table the same way a tap does.
+              -->
+              <ContentControl IsTabStop="True"
+                              UseSystemFocusVisuals="True"
+                              FocusVisualPrimaryBrush="{StaticResource Callout}"
+                              FocusVisualSecondaryBrush="{StaticResource Paper}"
+                              HorizontalContentAlignment="Stretch"
+                              Tapped="OnRowTapped"
+                              GotFocus="OnRowFocused"
+                              KeyDown="OnRowKeyDown"
+                              AutomationProperties.Name="{x:Bind AutomationName, Mode=OneWay}">
               <Grid Background="{x:Bind RowBackground, Mode=OneWay}"
                     Padding="8,11"
-                    ColumnSpacing="12"
-                    Tapped="OnRowTapped"
-                    AutomationProperties.Name="{x:Bind Name}">
+                    ColumnSpacing="12">
                 <Grid.ColumnDefinitions>
                   <ColumnDefinition Width="Auto" />
                   <ColumnDefinition Width="Auto" />
@@ -194,6 +256,7 @@
                              Foreground="{StaticResource InkFaint}" />
                 </StackPanel>
               </Grid>
+              </ContentControl>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
           </ItemsControl>
@@ -206,7 +269,9 @@
             <TextBlock x:Name="BuildTotal" Style="{StaticResource Money}" FontSize="17" HorizontalAlignment="Right" />
           </Grid>
           <TextBlock x:Name="BuildHint" Style="{StaticResource Body}" FontSize="12" />
-          <Button x:Name="ToggleButton" Style="{StaticResource PrimaryButton}" Click="OnToggleBuild" />
+          <Button x:Name="ToggleButton" Style="{StaticResource PrimaryButton}" Click="OnToggleBuild"
+                  UseSystemFocusVisuals="True"
+                  FocusVisualPrimaryBrush="{StaticResource Ink}" />
         </StackPanel>
       </Grid>
     </Border>

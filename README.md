@@ -40,4 +40,12 @@ The spec notes that with a dev-channel Uno.Sdk a Debug build launched without th
 
 ## Status
 
-Prototype. The plate, explode slider, callouts, two-way selection between stage and table, and add/remove with a build total are implemented. The narrow layout and MVUX model from the spec are not.
+Prototype. Implemented:
+
+- The plate, explode slider, callouts, two-way selection between stage and table, add/remove with a build total.
+- Narrow layout below 1000 px: stage on top at a capped height, slider and title block under it, parts table filling the rest with the total and Add pinned at the bottom. On desktop the window floor is 900 px (a Win32 render-thread workaround in `App.xaml.cs`), so narrow shows between 900 and 999 px.
+- Keyboard: rows are tab stops, focusing a row selects it, Up/Down move between rows, Enter/Space add or remove the focused part. Rows announce number, name, spec, price, stock and build state to screen readers.
+
+Not yet: the MVUX `BuildModel` and `FeedView` states from the spec.
+
+![Narrow layout](Exploded/shots/narrow.png)

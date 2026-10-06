@@ -85,8 +85,14 @@ public sealed class PartRow : INotifyPropertyChanged
             _isInBuild = value;
             Raise(nameof(IsInBuild));
             Raise(nameof(InBuildVisibility));
+            Raise(nameof(AutomationName));
         }
     }
+
+    /// <summary>What a screen reader announces for the row: everything the row shows, in reading order.</summary>
+    public string AutomationName =>
+        $"Part {Part.Number}, {Name}, {Spec}, {PriceLabel}, {StatusLabel.ToLowerInvariant()}"
+        + (IsInBuild ? ", in build" : string.Empty);
 
     public Brush NumberBrush => IsSelected ? Palette.Callout : Palette.InkFaint;
 
