@@ -88,15 +88,26 @@ scaffolding rule, but the catalog-load and build-list shape would end up reimple
 what `IListState` and `FeedView` already do.
 
 ```
-BuildModel (partial record)
-  IFeed<Build>        Build          catalog load; FeedView owns its states
-  IListState<Part>    Parts          projected from Build; selection-bindable
-  IState<int>         SelectedLayer  0..4, the sheet index; drives stage + list
-  IListState<Part>    BuildList      what the user added
-  IFeed<decimal>      Total          derived from BuildList
-  Task AddSelectedAsync()            command, reads Selected from state
-  Task RemoveAsync(...)
+BuildModel (partial record)            as built
+  IFeed<PartsKit>       Kit            catalog load
+  IState<int>           SelectedLayer  0..4, the sheet index; drives stage + list
+  IState<BuildList>     Build          what the user added, with Total / Hint
+  IListFeed<PartLine>   Lines          Kit x SelectedLayer x Build; FeedView owns its states
+  IFeed<string>         KitName, FormFactor, Revision, TotalLabel, BuildHint
+  IFeed<PartAction>     Action         primary button label + enabled
+  ValueTask ToggleSelected()           command, reads SelectedLayer from state
 ```
+
+As-built deviations:
+
+- The build is `IState<BuildList>`, not `IListState<Part>`. An empty list state reads
+  as None, and an empty build is a real value with a $0.00 total.
+- Add and Remove are one `ToggleSelected` command; the button label says which.
+- Rows are immutable `PartLine` records re-projected on every selection or build
+  change. The table replaces the changed rows, which throws away a focused row, so the
+  page holds the focused row's key and re-focuses its replacement on `Loaded`.
+- The generated view model is held in a private page property. A public member of an
+  MVUX-generated type fails the XAML bindable-metadata generator.
 
 Rule already burned in and to be respected: **do not pass the bound item as a
 `CommandParameter` from inside a FeedView template** — it silently no-ops. `AddSelectedAsync`

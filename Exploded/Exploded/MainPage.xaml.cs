@@ -1,6 +1,4 @@
-using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 using Exploded.Catalog;
 using Exploded.Presentation;
 using Exploded.Stage;
@@ -10,7 +8,6 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Shapes;
-using Windows.Foundation;
 using Windows.System;
 
 namespace Exploded;
@@ -18,38 +15,47 @@ namespace Exploded;
 /// <summary>
 /// The plate and its parts table.
 ///
-/// Two binding surfaces meet here on purpose. The stage follows the separation
-/// slider through x:Bind, because it has to track the thumb continuously and a
-/// value pipeline would be the wrong tool for that. Selection and build
-/// membership are plain imperative state over five rows, which is all this kit
-/// needs.
+/// Two binding surfaces meet here on purpose. Everything that is data (the kit,
+/// the selected layer, the build) lives in <see cref="BuildModel"/> and reaches
+/// the page through {Binding} on the generated view model. The stage follows
+/// the separation slider through x:Bind instead, because it has to track the
+/// thumb continuously and a feed would be the wrong tool for that.
 ///
-/// The sheets themselves are drawn by <see cref="Stage.PlateCanvas"/> rather
-/// than by XAML shapes: as Paths they were composition shape visuals, and Uno
-/// recomputes an anti-aliasing damage path for every shape visual whose
-/// transform changes, which cost about a blocking second of UI thread per step
-/// of the slider.
+/// What is left in code-behind is view work the model should not know about:
+/// the Skia stage, the callout bubbles, and moving keyboard focus between rows.
 /// </summary>
 public sealed partial class MainPage : Page
 {
-    private readonly IPartsCatalog _catalog = new InMemoryPartsCatalog();
-    private readonly List<PartRow> _rows = new();
-
     private readonly Ellipse[] _bubbleShells = new Ellipse[Explode.LayerCount];
     private readonly TextBlock[] _bubbleNumbers = new TextBlock[Explode.LayerCount];
 
-    private int _selected = 4;
+    // Every selection or build change re-emits the parts lines, and the table
+    // replaces the rows that changed, so a focused row is thrown away under the
+    // user. The key of the row that should keep focus is held here until its
+    // replacement loads.
+    private int _refocusKey = -1;
+    private FocusState _refocusState;
 
     public MainPage()
     {
         InitializeComponent();
 
+        ViewModel = new BuildViewModel(new InMemoryPartsCatalog());
+        DataContext = ViewModel;
+
         Plate.UseRenderer(new PlateRenderer(StagePalette()));
 
         BuildCallouts();
-        LoadKit();
-        Select(_selected);
+
+        // The bubbles are code-built, so they follow the selection off the
+        // plate's bound property rather than through bindings of their own.
+        Plate.RegisterPropertyChangedCallback(PlateCanvas.SelectedLayerProperty, (_, _) => ShowSelection());
+        ShowSelection();
     }
+
+    // Private: the XAML bindable-metadata generator cannot see MVUX-generated
+    // types, and fails the build on a public member of one.
+    private BuildViewModel ViewModel { get; }
 
     // ── x:Bind function targets ───────────────────────────────────────────
     // Each re-evaluates when its argument path (the slider's Value) changes.
@@ -95,7 +101,7 @@ public sealed partial class MainPage : Page
 
             var shell = new Ellipse
             {
-                Fill = Palette.Get("Paper"),
+                Fill = Palette.Paper,
                 Stroke = Palette.Callout,
                 StrokeThickness = 1.2d
             };
@@ -123,50 +129,31 @@ public sealed partial class MainPage : Page
         }
     }
 
-    private void LoadKit()
-    {
-        var kit = _catalog.GetKit();
-
-        KitName.Text = kit.Name.ToUpperInvariant();
-        TitleFormFactor.Text = kit.FormFactor;
-        TitleRevision.Text = kit.Revision;
-
-        foreach (var part in kit.Parts)
-        {
-            _rows.Add(new PartRow(part));
-        }
-
-        PartsList.ItemsSource = _rows;
-        UpdateBuild();
-    }
-
     // ── selection ─────────────────────────────────────────────────────────
 
-    private void Select(int layerIndex)
+    private void ShowSelection()
     {
-        _selected = layerIndex;
-
-        Plate.SelectedLayer = layerIndex;
+        var selected = Plate.SelectedLayer;
 
         for (var layer = 0; layer < Explode.LayerCount; layer++)
         {
-            var isSelected = layer == layerIndex;
+            var isSelected = layer == selected;
 
-            _bubbleShells[layer].Fill = isSelected ? Palette.Callout : Palette.Get("Paper");
-            _bubbleNumbers[layer].Foreground = isSelected ? Palette.Get("Paper") : Palette.Callout;
+            _bubbleShells[layer].Fill = isSelected ? Palette.Callout : Palette.Paper;
+            _bubbleNumbers[layer].Foreground = isSelected ? Palette.Paper : Palette.Callout;
         }
 
-        foreach (var row in _rows)
+        AutomationProperties.SetName(Plate, selected >= 0
+            ? $"Exploded plate, part {Explode.CalloutNumber(selected)} selected"
+            : "Exploded plate");
+    }
+
+    private void Select(int layerIndex)
+    {
+        if (ViewModel.SelectedLayer != layerIndex)
         {
-            row.IsSelected = row.LayerIndex == layerIndex;
-
-            if (row.IsSelected)
-            {
-                AutomationProperties.SetName(Plate, $"Exploded plate, {row.AutomationName} selected");
-            }
+            ViewModel.SelectedLayer = layerIndex;
         }
-
-        UpdateAction();
     }
 
     private void OnPlateTapped(object sender, TappedRoutedEventArgs e)
@@ -182,19 +169,35 @@ public sealed partial class MainPage : Page
 
     private void OnRowTapped(object sender, TappedRoutedEventArgs e)
     {
-        if (sender is FrameworkElement { DataContext: PartRow row })
+        if (sender is FrameworkElement { DataContext: PartLine line })
         {
-            Select(row.LayerIndex);
+            Select(line.Key);
             e.Handled = true;
         }
     }
 
     private void OnRowFocused(object sender, RoutedEventArgs e)
     {
-        if (sender is FrameworkElement { DataContext: PartRow row } && row.LayerIndex != _selected)
+        if (sender is Control { DataContext: PartLine line } row && line.Key != ViewModel.SelectedLayer)
         {
-            Select(row.LayerIndex);
+            HoldFocus(line.Key, row.FocusState);
+            Select(line.Key);
         }
+    }
+
+    private void OnRowLoaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is Control { DataContext: PartLine line } row && line.Key == _refocusKey)
+        {
+            _refocusKey = -1;
+            row.Focus(_refocusState);
+        }
+    }
+
+    private void HoldFocus(int key, FocusState state)
+    {
+        _refocusKey = key;
+        _refocusState = state == FocusState.Unfocused ? FocusState.Programmatic : state;
     }
 
     /// <summary>
@@ -204,89 +207,37 @@ public sealed partial class MainPage : Page
     /// </summary>
     private void OnRowKeyDown(object sender, KeyRoutedEventArgs e)
     {
-        if (sender is not FrameworkElement { DataContext: PartRow row })
+        if (sender is not FrameworkElement { DataContext: PartLine line } row
+            || VisualTreeHelper.GetParent(row) is not DependencyObject container
+            || ItemsControl.ItemsControlFromItemContainer(container) is not ItemsControl list)
         {
             return;
         }
 
-        var index = _rows.IndexOf(row);
+        var index = list.IndexFromContainer(container);
 
         switch (e.Key)
         {
-            case VirtualKey.Down when index < _rows.Count - 1:
-                e.Handled = FocusRow(index + 1);
+            case VirtualKey.Down:
+                e.Handled = FocusRow(list, index + 1);
                 break;
-            case VirtualKey.Up when index > 0:
-                e.Handled = FocusRow(index - 1);
+            case VirtualKey.Up:
+                e.Handled = FocusRow(list, index - 1);
                 break;
             case VirtualKey.Enter:
             case VirtualKey.Space:
-                Select(row.LayerIndex);
-                ToggleSelected();
+                HoldFocus(line.Key, ((Control)row).FocusState);
+                Select(line.Key);
+                ViewModel.ToggleSelected.Execute(null);
                 e.Handled = true;
                 break;
         }
     }
 
-    private bool FocusRow(int index)
-        => PartsList.ContainerFromIndex(index) is DependencyObject container
+    private static bool FocusRow(ItemsControl list, int index)
+        => index >= 0
+           && list.ContainerFromIndex(index) is DependencyObject container
            && VisualTreeHelper.GetChildrenCount(container) > 0
            && VisualTreeHelper.GetChild(container, 0) is Control control
            && control.Focus(FocusState.Keyboard);
-
-    // ── the build ─────────────────────────────────────────────────────────
-
-    private void OnToggleBuild(object sender, RoutedEventArgs e) => ToggleSelected();
-
-    private void ToggleSelected()
-    {
-        var row = _rows.FirstOrDefault(r => r.LayerIndex == _selected);
-
-        if (row is null || !row.IsAvailable)
-        {
-            return;
-        }
-
-        row.IsInBuild = !row.IsInBuild;
-        UpdateBuild();
-    }
-
-    private void UpdateBuild()
-    {
-        var added = _rows.Where(r => r.IsInBuild).ToList();
-        var total = added.Sum(r => r.Part.Price);
-
-        BuildTotal.Text = "$" + total.ToString("0.00", CultureInfo.InvariantCulture);
-
-        BuildHint.Text = added.Count switch
-        {
-            0 => "Nothing added yet. Tap a layer to price it.",
-            1 => "1 of 5 parts added.",
-            _ => $"{added.Count} of 5 parts added."
-        };
-
-        UpdateAction();
-    }
-
-    private void UpdateAction()
-    {
-        var row = _rows.FirstOrDefault(r => r.LayerIndex == _selected);
-
-        if (row is null)
-        {
-            return;
-        }
-
-        if (!row.IsAvailable)
-        {
-            ToggleButton.IsEnabled = false;
-            ToggleButton.Content = $"{row.Name} is out of stock";
-            return;
-        }
-
-        ToggleButton.IsEnabled = true;
-        ToggleButton.Content = row.IsInBuild
-            ? $"Remove {row.Name.ToLowerInvariant()}"
-            : $"Add {row.Name.ToLowerInvariant()} to build";
-    }
 }

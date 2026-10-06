@@ -9,9 +9,9 @@ An exploded-view parts catalog for a 60% mechanical keyboard, built with Uno Pla
 | Path | Purpose |
 |---|---|
 | `Exploded/Exploded/` | The app (Uno single project, one page) |
-| `Exploded/Exploded/Catalog/` | `Part` record, `IPartsCatalog` and a hardcoded in-memory kit of five parts |
+| `Exploded/Exploded/Catalog/` | `Part` record, async `IPartsCatalog` and a hardcoded in-memory kit of five parts |
 | `Exploded/Exploded/Stage/` | Explode math (`SheetMatrix`, callout fade, leader lines), key layout table, and the SkiaSharp plate renderer |
-| `Exploded/Exploded/Presentation/PartRow.cs` | Observable row object for the parts table (selected / in build) |
+| `Exploded/Exploded/Presentation/` | MVUX `BuildModel`, `BuildList` / `PartAction` / `PartLine` records, and two small converters |
 | `Exploded/Exploded/Themes/Tokens.xaml` | Color, type, spacing and shape tokens |
 | `Exploded/EXPLODED-SPEC.md` | Architecture, design and interaction brief plus implementation plan |
 | `Exploded/tools/Capture-Window.ps1` | Windows script that captures a running app window to PNG |
@@ -23,7 +23,8 @@ An exploded-view parts catalog for a 60% mechanical keyboard, built with Uno Pla
 - `UnoFeatures`: `SkiaRenderer; Mvux`
 - The stage is a single `SKCanvasElement` (`PlateCanvas`). Each sheet is recorded once into an `SKPicture` and replayed under its own matrix, so moving the slider is one invalidation. The spec explains why XAML `Path` layers were dropped (per-frame cost on the UI thread).
 - Separation drives the leader lines, callout fade and stage hint through `x:Bind` function bindings on `MainPage`.
-- Selection and build state are plain code-behind over five `PartRow` objects. The spec plans an MVUX `BuildModel`; it is not in the code yet.
+- Kit, selection and build live in the MVUX `BuildModel`; the generated `BuildViewModel` is the page's DataContext. The parts table is a `FeedView` over `Lines` with progress, error (Retry) and none states. Separation stays out of MVUX and on `x:Bind`, because it changes on every pointer move.
+- Code-behind keeps view-only work: the Skia stage, the callout bubbles, and keyboard focus. Each selection or build change re-emits the rows and the table replaces the changed ones, so the page re-focuses the row the user was on when its replacement loads.
 - Fonts: static IBM Plex Sans, Sans Condensed and Mono TTFs in `Assets/Fonts`.
 - Central package management is on; `Directory.Packages.props` is empty (Uno implicit packages).
 
@@ -46,6 +47,8 @@ Prototype. Implemented:
 - Narrow layout below 1000 px: stage on top at a capped height, slider and title block under it, parts table filling the rest with the total and Add pinned at the bottom. On desktop the window floor is 900 px (a Win32 render-thread workaround in `App.xaml.cs`), so narrow shows between 900 and 999 px.
 - Keyboard: rows are tab stops, focusing a row selects it, Up/Down move between rows, Enter/Space add or remove the focused part. Rows announce number, name, spec, price, stock and build state to screen readers.
 
-Not yet: the MVUX `BuildModel` and `FeedView` states from the spec.
+- MVUX `BuildModel` with `FeedView` loading, error and none states.
+
+Not yet: an automated test project for `BuildModel`; the total counting up on add (spec Motion section).
 
 ![Narrow layout](Exploded/shots/narrow.png)
