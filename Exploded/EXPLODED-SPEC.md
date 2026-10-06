@@ -44,7 +44,8 @@ Exploded/
     IPartsCatalog.cs
     InMemoryPartsCatalog.cs   the 60% tray-mount build, hardcoded
   Stage/
-    Explode.cs                SheetMatrix / TagFade / stage hints (ported)
+    Iso.cs                    Hairline's camera, rings, hull, prism (ported, MIT)
+    Explode.cs                lifts / leader lines / callout fade / stage hints
     KeyLayout.cs              key positions for the caps + switches layers
   Presentation/
     BuildModel.cs             MVUX model
@@ -150,10 +151,16 @@ Key positions come from a single `KeyLayout` table (unit-based: 1u = 19.05 units
 design space) and are stamped into a `Canvas` per layer in code. One table, five
 consumers.
 
-**Constraint, not a risk:** every layer is a flat plan view. `SheetMatrix` is affine
-per sheet, so a rectangle stays a parallelogram and real part thickness is not
-modelled. That is exactly what an exploded plate in a service manual does, so the
-constraint and the archetype agree. No part gets extruded.
+**Revised (Hairline port):** the flat plan-view constraint above described the first
+build. The stage now draws the five parts as isometric solids through one
+orthographic camera (`Stage/Iso.cs`, ported from Hairline's `core/iso.ts`): a solid
+is the hull of its foot ring and its top ring, so no vertical corner is drawn, with
+one crease inside the top edge as the bevel. Keycaps taper and follow a sculpted
+row profile; switches are short tapered housings with the stem on top; the plate's
+cutouts sit on its top face. The projection is linear in z, so the explode is a
+screen translation per layer and the five-pictures-per-frame cost is unchanged. The
+camera is `Cam(35°, 0.5, 0.98)`: a 60% board is nearly three times wider than deep,
+and Hairline's 45° would spend the stage's width on the board's depth.
 
 ### Platform constraints to design around
 

@@ -5,51 +5,33 @@ using Windows.Foundation;
 namespace Exploded.Stage;
 
 /// <summary>
-/// The explode transform, ported from the StrataApp composition study and
-/// retuned for five physical parts rather than three flat sheets.
+/// The explode: five solids on one build axis, seen through one orthographic
+/// camera. The camera is Hairline's (<see cref="Iso"/>): the ground turned by
+/// an azimuth, y squashed to the 2:1 view, z lifted straight up the screen.
+/// Because the projection is linear in z, lifting a layer by <c>gap</c> world
+/// units is a plain screen translation of <c>-S · zf · gap</c>, so each layer's
+/// art is recorded once at its assembled height and replayed shifted.
 ///
-/// Uno implements neither UIElement.Transform3D nor a nestable PlaneProjection,
-/// so the deck is tipped back by RotationX, spun by RotationZ, and each sheet is
-/// lifted along the deck's normal here, then handed to a plain MatrixTransform.
-///
-/// A point (x, y, gap) on sheet n maps through Rx(tilt) . Rz(spin) to
-///   X = x.cos s - y.sin s
-///   Y = (x.sin s + y.cos s).cos t - gap.sin t
-/// which is affine in x and y, so the whole thing collapses into one 2x3 matrix
-/// per sheet. The sheet's own depth survives as the OffsetY term and as a slight
-/// scale-up for the sheets nearest the viewer.
+/// The earlier affine sheets (tilt, spin, perspective) are gone: parts now have
+/// thickness, tapered caps and bevels, and the drawing stays honest from any
+/// separation because plates are opaque and painted back to front.
 /// </summary>
 internal static class Explode
 {
-    /// <summary>
-    /// Tip-back at full separation. Shallower than Strata's 56 degrees: a
-    /// keyboard is wide and shallow, and a steep tilt crushes it into a bar.
-    /// </summary>
-    private const double TiltDegrees = 52d;
-
-    /// <summary>
-    /// In-plane spin at full separation. Much smaller than Strata's 34 degrees,
-    /// because spinning a 15u-wide object that far sweeps a bounding box half
-    /// again as large and reads as chaos rather than as a drawing.
-    /// </summary>
-    private const double SpinDegrees = -14d;
-
-    /// <summary>Gap between neighbouring sheets along the deck normal.</summary>
-    private const double SheetGap = 44d;
-
-    /// <summary>Viewer distance for the perspective foreshortening.</summary>
-    private const double Perspective = 1600d;
+    /// <summary>Gap between neighbouring layers along the build axis at full separation, in world units.</summary>
+    private const double Gap = 34d;
 
     /// <summary>Stage design size. Every measurement is written at its real number; the Viewbox scales the whole surface.</summary>
     public const double StageWidth = 960d;
     public const double StageHeight = 440d;
 
     /// <summary>
-    /// Where the assembled stack sits. Pushed below centre because the explode
-    /// only ever grows upward, so the headroom has to be reserved for it.
+    /// Where the drawing is centred: the box of the fully exploded stack sits
+    /// here, so the assembled stack rests lower and the explode grows into the
+    /// headroom, left of the callout ladder.
     /// </summary>
-    public const double StackCentreX = StageWidth / 2d;
-    public const double StackCentreY = 275d;
+    private const double CentreX = 430d;
+    private const double CentreY = 222d;
 
     /// <summary>The callout ladder: five bubbles on a fixed rail down the right of the plate.</summary>
     public const double BubbleX = 838d;
@@ -59,34 +41,58 @@ internal static class Explode
 
     public const int LayerCount = 5;
 
+    /// <summary>
+    /// Each layer's footprint on the ground and the heights it stands between
+    /// when assembled. Layer 0 is the case at the bottom; layer 4 the keycaps.
+    /// Depths are world units, the same units as the key field.
+    /// </summary>
+    public static readonly LayerShape[] Layers =
+    {
+        new(Iso.Rrect(0, 0, KeyLayout.CaseWidth, KeyLayout.CaseHeight, 9), -11d, 0d),
+        new(Iso.Rrect(6, 6, KeyLayout.CaseWidth - 6, KeyLayout.CaseHeight - 6, 4), 0d, 1.6d),
+        new(Iso.Rrect(4, 4, KeyLayout.CaseWidth - 4, KeyLayout.CaseHeight - 4, 5), 1.6d, 3.2d),
+        new(Iso.Rrect(KeyLayout.Bezel, KeyLayout.Bezel, KeyLayout.Bezel + KeyLayout.FieldWidth, KeyLayout.Bezel + KeyLayout.FieldHeight, 4), 3.2d, 15d),
+        new(Iso.Rrect(KeyLayout.Bezel, KeyLayout.Bezel, KeyLayout.Bezel + KeyLayout.FieldWidth, KeyLayout.Bezel + KeyLayout.FieldHeight, 4), 15d, 26d),
+    };
+
+    /// <summary>
+    /// The one camera. A 35° azimuth rather than Hairline's 45°: a 60% board is
+    /// nearly three times wider than deep, and at 45° it spends the stage's width
+    /// on its depth. Fitted once to the fully exploded box.
+    /// </summary>
+    public static readonly Camera Camera = MakeCamera();
+
+    private static Camera MakeCamera()
+    {
+        var camera = Iso.Cam(35, 0.5, 0.98);
+        var top = Layers[LayerCount - 1].Z1 + Gap * (LayerCount - 1);
+        var bottom = Layers[0].Z0;
+        Iso.Fit(camera, new[]
+        {
+            new Vec3(0, 0, bottom),
+            new Vec3(KeyLayout.CaseWidth, KeyLayout.CaseHeight, bottom),
+            new Vec3(KeyLayout.CaseWidth, 0, bottom),
+            new Vec3(0, KeyLayout.CaseHeight, bottom),
+            new Vec3(0, 0, top),
+            new Vec3(KeyLayout.CaseWidth, 0, top),
+            new Vec3(0, KeyLayout.CaseHeight, top),
+        }, CentreX, CentreY);
+        return camera;
+    }
+
     /// <summary>Separation as 0..1.</summary>
     private static double T(double separation) => Math.Clamp(separation / 100d, 0d, 1d);
 
-    /// <summary>Layer 0 is the case at the bottom of the stack; layer 4 is the keycaps on top.</summary>
-    public static Matrix SheetMatrix(double separation, int layerIndex)
-    {
-        var t = T(separation);
-        var tilt = TiltDegrees * t * Math.PI / 180d;
-        var spin = SpinDegrees * t * Math.PI / 180d;
-        var gap = SheetGap * layerIndex * t;
+    /// <summary>How far layer <paramref name="layerIndex"/> is lifted along the build axis, in world units.</summary>
+    public static double Lift(double separation, int layerIndex) => Gap * layerIndex * T(separation);
 
-        var cosT = Math.Cos(tilt);
-        var sinT = Math.Sin(tilt);
-        var cosS = Math.Cos(spin);
-        var sinS = Math.Sin(spin);
-
-        // the deck shrinks a little as it tips away; each sheet then gains back
-        // the perspective scale it earns by sitting closer to the viewer
-        var scale = (1d - t * 0.06d) * (Perspective / (Perspective - gap * cosT));
-
-        return new Matrix(
-            m11: scale * cosS,
-            m12: scale * sinS * cosT,
-            m21: scale * -sinS,
-            m22: scale * cosS * cosT,
-            offsetX: 0d,
-            offsetY: -gap * sinT);
-    }
+    /// <summary>
+    /// The screen translation that lifts a layer's recorded art: the projection
+    /// is orthographic, so a rise of <c>gap</c> world units is a shift straight up
+    /// the screen by <c>S · zf · gap</c>, and nothing else about the drawing changes.
+    /// </summary>
+    public static double LiftOffset(double separation, int layerIndex)
+        => -Camera.S * Camera.Zf * Lift(separation, layerIndex);
 
     /// <summary>Callout number, read top down the way a parts list is numbered: keycaps are part 1.</summary>
     public static int CalloutNumber(int layerIndex) => LayerCount - layerIndex;
@@ -96,21 +102,19 @@ internal static class Explode
         => new(BubbleX, BubbleTop + (CalloutNumber(layerIndex) - 1) * BubbleSpacing);
 
     /// <summary>
-    /// The leader line from a sheet's right edge out to its callout bubble.
-    ///
-    /// The bubbles sit on a fixed ladder rather than tracking their sheet, which
-    /// is both the drafting convention and the only way they avoid colliding
-    /// with each other in the middle of the scrub, where sheets are only a few
-    /// pixels apart. The last segment lands horizontally into the bubble.
+    /// The leader line from a layer's rightmost edge, at its top, out to its
+    /// callout bubble. The bubbles sit on a fixed ladder rather than tracking
+    /// their layer, which is both the drafting convention and the only way they
+    /// avoid colliding with each other in the middle of the scrub. The last
+    /// segment lands horizontally into the bubble.
     /// </summary>
     public static Geometry LeaderLine(double separation, int layerIndex)
     {
-        var matrix = SheetMatrix(separation, layerIndex);
-        var halfWidth = KeyLayout.CaseWidth / 2d;
-
-        var anchor = new Point(
-            StackCentreX + halfWidth * matrix.M11,
-            StackCentreY + halfWidth * matrix.M12 + matrix.OffsetY);
+        var layer = Layers[layerIndex];
+        var project = Iso.Proj(Camera);
+        var (_, right, _) = Iso.Extremes(project, layer.Ring);
+        var edge = project(right.U, right.V, layer.Z1);
+        var anchor = new Point(edge.X, edge.Y + LiftOffset(separation, layerIndex));
 
         var bubble = BubbleCentre(layerIndex);
         var landing = new Point(bubble.X - BubbleRadius - 18d, bubble.Y);
@@ -139,3 +143,6 @@ internal static class Explode
         _ => "SEPARATING"
     };
 }
+
+/// <summary>A layer's footprint ring on the ground and the heights it stands between when assembled.</summary>
+internal sealed record LayerShape(Sample[] Ring, double Z0, double Z1);
